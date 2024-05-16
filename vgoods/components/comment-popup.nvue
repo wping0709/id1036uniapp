@@ -1,0 +1,355 @@
+<template>
+	<!-- 评论弹框 -->
+	<div v-if="showComment" class="popup-box flex-col">
+		<div class="title">
+			<text>共{{ comment.list.length }}条评论</text>
+			<image @click="$emit('update:showComment',false)" class="icon-arrow-close"
+				:src="wxapp_img.vgoods.icon_arrow_close" mode="widthFix">
+			</image>
+		</div>
+		<scroll-view scroll-y class="scroll">
+			<div class="list" v-if="comment.list.length">
+				<div class="item" v-for="(item, i) in comment.list" :key="i">
+					<view class="flex">
+						<div @click="onSelect(item)" class="left flex flex-w-1">
+							<image class="touxiang-img" :src="item.avatar_url" mode="aspectFill" />
+							<view class="left-content flex-col flex-w-1">
+								<text class="color-666 nickname">{{ item.nickname }}</text>
+								<text class="m-t-10 comment">{{ item.comment }}</text>
+								<text class="color-999 font-20 m-t-10">
+									{{
+	                    item.add_time
+	                  }}
+								</text>
+							</view>
+						</div>
+
+						<div @click="onCommentDianzan(item)" class="right p-x-10 flex-col flex-y-center flex-x-center">
+							<image v-if="item.is_like"
+								src="https://limitao.myuan.cn/gongyong/shangchuan/tu/38/2020/06/zal2uON0lr5AAQzmn06Z70A4Cy74Mu.png"
+								mode="widthFix" class="comment-xin"></image>
+							<image v-else :src="wxapp_img.vgoods.aixin_999"
+								mode="widthFix" class="comment-xin"></image>
+
+							<text class="font-26">
+								{{ item.like_count }}
+							</text>
+						</div>
+					</view>
+
+					<template v-if="item.reply_list.length">
+						<view v-for="(item1, i1) in item.reply_list" :key="i1" style="padding-left: 100rpx"
+							class="flex">
+							<div @click="onSelect(item1)" class="left flex flex-w-1">
+								<image class="touxiang-img" :src="item1.avatar_url" mode="aspectFill" />
+								<view class="left-content flex-col flex-w-1">
+									<text class="color-666 nickname">{{ item1.nickname }}</text>
+									<text class="m-t-10 comment">{{ item1.comment }}</text>
+									<text class="color-999 font-20 m-t-10">{{
+	                      item1.add_time
+	                    }}</text>
+								</view>
+							</div>
+
+							<div @click="onCommentDianzan(item1)"
+								class="right p-x-10 flex-col flex-y-center flex-x-center">
+
+								<image v-if="item1.is_like"
+									src="https://limitao.myuan.cn/gongyong/shangchuan/tu/38/2020/06/zal2uON0lr5AAQzmn06Z70A4Cy74Mu.png"
+									mode="widthFix" class="comment-xin"></image>
+								<image v-else :src="wxapp_img.vgoods.aixin_999"
+									mode="widthFix" class="comment-xin"></image>
+								<text class="font-26">{{ item1.like_count }}</text>
+							</div>
+						</view>
+					</template>
+				</div>
+			</div>
+
+			<view v-else class="empty">
+				<image src="https://cdn.uviewui.com/uview/empty/data.png" class="empty-img" mode="widthFix"></image>
+			</view>
+		</scroll-view>
+
+		<div class="input-box">
+			<view class="input">
+
+				<u-input @confirm="onSubmit" v-model="inputValue" :placeholder="inputPh" border="none">
+				</u-input>
+			</view>
+			<text class="suffix" @click="onSubmit">提交</text>
+		</div>
+	</div>
+</template>
+
+<script>
+	import $requestAll from '@/api/index.js'
+
+	var showNum = 0
+	export default {
+		props: {
+			showComment: {
+				type: Boolean,
+				default: false
+			},
+			cItem: {
+				type: Object,
+				default: () => {
+					return {}
+				}
+			}
+		},
+		watch: {
+			showComment(val, ovl) {
+				if (val) {
+					if (!showNum) this.getComment(true)
+					showNum++
+				}
+			},
+			cItem(val, ovl) {
+				if (val !== ovl) {
+					showNum = 0
+				}
+			}
+		},
+		data() {
+			return {
+				// 评论数据开始-----------------------------
+				showComment: false,
+				comment: {
+					list: [],
+					page: 1,
+					status: 'loadmore'
+				},
+				checkItem: '',
+				focus: false,
+				inputValue: '',
+				// 评论数据结束------------------------------------
+			}
+		},
+		computed: {
+			$requestAll() {
+				return $requestAll
+			},
+			inputPh() {
+				if (!this.checkItem) return '说点什么呗~';
+				return `回复 ${this.checkItem.nickname}`;
+			},
+			wxapp_img() {
+				var store = require('@/store/index').default
+				return store.getters['wxapp_img']
+			},
+		},
+		methods: {
+			async getComment(isReset) {
+				if (isReset) this.resetComment()
+				const res = await this.$requestAll.vgoods.getVgoodsComment({
+						page: this.comment.page,
+						id: this.cItem.id,
+					},
+					true
+				);
+				this.comment.list.push(...res.data.comment_list);
+				this.comment.page++;
+				this.comment.status =
+					res.data.count <= this.comment.list.length ? 'nomore' : 'loadmore';
+			},
+			resetComment() {
+				this.comment.page = 1
+				this.comment.list = []
+				this.comment.status = 'loadmore'
+			},
+			// 选中评论
+			onSelect(item) {
+				this.checkItem = item;
+				this.focus = true;
+			},
+			async onCommentDianzan(item) {
+				await this.$requestAll.vgoods.commentGood({
+						id: item.id,
+						status: Number(!item.is_like),
+					},
+					true
+				);
+				item.like_count = Number(item.like_count)
+				item.is_like = !item.is_like;
+				item.like_count += item.is_like ? 1 : -1;
+			},
+			async onSubmit() {
+				var formData = {
+					comment: this.inputValue,
+				};
+				if (!this.checkItem) {
+					formData.reply_id = 0;
+					formData.vgoods_id = this.cItem.id;
+					formData.parent_id = 0;
+				} else {
+					formData.reply_id = this.checkItem.user_id
+					formData.vgoods_id = this.checkItem.vgoods_id
+					formData.parent_id = Number(this.checkItem.parent_id) ?
+						this.checkItem.parent_id :
+						this.checkItem.id;
+				}
+				const res = await this.$requestAll.vgoods.addVgoodsComment(
+					formData,
+					true
+				);
+
+				if (!this.checkItem) {
+					this.comment.list.unshift(res.data);
+				} else {
+					var i = -1;
+
+					if (!Number(this.checkItem.parent_id)) {
+						i = this.comment.list.findIndex(item => item.id == this.checkItem.id);
+					} else {
+						i = this.comment.list.findIndex(
+							item => item.id == this.checkItem.parent_id
+						);
+					}
+					this.comment.list[i].reply_list.push(res.data);
+				}
+				this.checkItem = '';
+				this.inputValue = '';
+			},
+		}
+	}
+</script>
+
+<style lang="scss">
+	.popup-box {
+		position: fixed;
+		left: 0%;
+		right: 0;
+		bottom: 0;
+		border-radius: 20rpx 20rpx 0 0;
+		background: #fff;
+		padding-bottom: 0%;
+
+		.title {
+			position: relative;
+			font-weight: 600;
+			font-size: 32rpx;
+			padding: 20rpx 0;
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			justify-content: center;
+
+
+		}
+
+		.icon-arrow-close {
+			position: absolute;
+			right: 40rpx;
+			top: 20rpx;
+			width: 50rpx;
+		}
+
+		.scroll {
+			height: 800rpx;
+
+			.list {
+				.item {
+					padding: 10rpx 20rpx;
+
+					.left {
+						.touxiang-img {
+							width: 70rpx;
+							height: 70rpx;
+							border-radius: 50%;
+							margin-right: 20rpx;
+						}
+
+						.left-content {
+							.nickname {
+								font-size: 28rpx;
+							}
+
+							.comment {
+								width: 100%;
+								word-break: break-all;
+								font-size: 28rpx;
+							}
+
+						}
+					}
+
+					.right {
+						display: flex;
+						flex-direction: column;
+
+						height: 140rpx;
+
+						.comment-xin {
+							width: 40rpx;
+						}
+					}
+				}
+			}
+		}
+
+
+		.empty {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin: 40rpx auto;
+
+			.empty-img {
+				width: 400rpx;
+			}
+		}
+
+		.input-box {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+
+
+			border-radius: 30rpx;
+			padding: 10rpx 20rpx;
+			margin: 20rpx;
+			background: #f5f5f5;
+
+			.input {
+				flex: 1;
+
+			}
+
+			.suffix {
+				padding: 0 10rpx;
+				font-weight: 600;
+				font-size: 30rpx;
+			}
+		}
+
+		.list {
+			.item {
+				padding: 10rpx 20rpx;
+
+				.left {
+					>image {
+						width: 70rpx;
+						height: 70rpx;
+						border-radius: 50%;
+						margin-right: 20rpx;
+					}
+
+					.left-content {
+						.comment {
+							width: 100%;
+							word-break: break-all;
+						}
+					}
+				}
+
+				.right {
+					height: 140rpx;
+				}
+			}
+		}
+
+
+	}
+</style>

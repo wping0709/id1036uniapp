@@ -1,0 +1,1058 @@
+<template>
+  <list
+    :pagingEnabled="true"
+    class="zhi_index04"
+    :offset-accuracy="videoStyle.height"
+    :show-scrollbar="false"
+    @loadmore="getVgoods"
+    ref="list"
+    :loadmoreoffset="loadMoreHeight"
+    @scroll="Scroll"
+  >
+    <cell
+      style="position: relative"
+      :style="videoStyle"
+      v-for="(l, i) in vgoodsList"
+      :key="i"
+      @disappear="Disappear($event, i)"
+      @appear="onappear"
+    >
+      <!-- 视频 -->
+      <video
+        :style="videoStyle"
+        @play="panduanpofang"
+        @timeupdate="Timeupdate"
+        :id="`video_${i}`"
+        :ref="`video_${i}`"
+        :src="l.video_src"
+        :autoplay="i == 0"
+        :http-cache="false"
+        loop
+        :controls="false"
+        :show-fullscreen-btn="false"
+        :show-center-play-btn="false"
+        object-fit="contain"
+      ></video>
+
+      <!-- 视频占位图 -->
+      <image
+        :src="l.video_src + '?x-oss-process=video/snapshot,t_0,f_jpg'"
+        v-if="!l.fengmian && suo == 0"
+        :style="videoStyle"
+        class="zhi_index05"
+        mode="aspectFit"
+      >
+      </image>
+
+      <!-- 评论区域 -->
+      <!-- <div class="zhi_index06">
+        <div class="zhi_xiashipin7">
+          <text class="zhi_index09">{{ l.guanjianzi }}</text>
+          <text class="zhi_index10">{{ l.content }}</text>
+        </div>
+      </div> -->
+
+      <div v-if="l.content" class="swiper-item-bottom-content">
+        <div>
+          <text class="zhi_index07">
+            {{ (l.user_info && l.user_info.nickname) || "" }}
+          </text>
+        </div>
+        <scroll-view @scroll.prevent scroll-y style="max-height: 140upx">
+          <div class="zhi_index06">
+            <text class="zhi_index08">
+              {{ l.content }}
+            </text>
+          </div>
+        </scroll-view>
+      </div>
+
+      <div class="zhi_xiashipin10">
+        <view class="zhi_index13">
+          <view
+            @click="
+              $utils.toUrl('/shakeProduct/homepage/index?user_id=' + l.user_id)
+            "
+          >
+            <image
+              mode="aspectFill"
+              :src="l.user_info && l.user_info.avatar_url"
+              class="text-center"
+              style="
+                width: 90upx;
+                height: 90upx;
+                border-radius: 45upx;
+                margin-top: 8px;
+              "
+            ></image>
+          </view>
+          <image
+            v-if="!l.is_focus"
+            @click="onFocus(l)"
+            style="
+              position: absolute;
+              color: #ff0000;
+              left: 25upx;
+              bottom: 10upx;
+              width: 20px;
+              height: 20px;
+            "
+            :src="wxapp_img.vgoods.guanzhu"
+          >
+          </image>
+        </view>
+
+        <!-- 点赞 -->
+        <div class="zhi_index18" @click="onDianzan(l, i)">
+          <image
+            v-if="l.is_like"
+            :src="wxapp_img.vgoods.xin_check"
+            class="zhi_index19"
+          ></image>
+          <image v-else :src="wxapp_img.vgoods.xin" class="zhi_index19"></image>
+          <text class="zhi_index21">{{ l.good_num || 0 }}</text>
+        </div>
+
+        <!-- 打赏 -->
+        <div
+          class="zhi_index18 zhi_index18_1"
+          @click="switchBoolean('showDaShang')"
+        >
+          <image :src="wxapp_img.vgoods.dashang" class="zhi_index19"> </image>
+          <text class="zhi_index21">打赏</text>
+        </div>
+
+        <!-- 评论 -->
+        <div
+          @click="switchBoolean('showComment')"
+          class="zhi_index18 zhi_index18_1"
+        >
+          <image :src="wxapp_img.vgoods.comment" class="zhi_index19"></image>
+
+          <text class="zhi_index21">评论</text>
+        </div>
+
+        <!-- 分享 -->
+        <div
+          @click="switchBoolean('showShare')"
+          class="zhi_index20 zhi_index18_1"
+        >
+          <image :src="wxapp_img.vgoods.share" class="zhi_index19"></image>
+
+          <text class="zhi_index21">分享</text>
+        </div>
+
+        <!-- 购物车 -->
+        <div class="zhi_index23">
+          <image
+            v-if="vgoodsList[index].goods_list.length"
+            @click="switchBoolean('showGoods')"
+            class="zhi_xiashipin23 zhi_index22"
+            :src="wxapp_img.vgoods.cart"
+          >
+          </image>
+        </div>
+      </div>
+
+      <!-- 进度条 -->
+      <progress
+        v-if="index == i"
+        :percent="bofangjindu"
+        stroke-width="1"
+        activeColor="#FFFFFF"
+        backgroundColor="rgba(226, 226, 226, 0.3)"
+        class="zhi_index24"
+      />
+    </cell>
+
+    <!-- 头部导航栏 -->
+    <div class="zhi_index00">
+      <div :style="{ height: statusBarHeight }"></div>
+      <div class="zhi_index01">
+        <!-- 搜索 -->
+        <view @click="onHoutui" class="zhi_index11">
+          <image
+            class="zhi_index12"
+            mode="widthFix"
+            :src="wxapp_img.vgoods.icon_arrow_left"
+          >
+          </image>
+        </view>
+       <scroll-view scroll-x>
+        <div v-if="pageType == 0" class="zhi_index02">
+         <div
+            v-for="(cart, i) in cartList"
+            :key="i"
+            @click="switchTab(cart.id)"
+            :class="{ dibu1: so.zhuangtai == 1 }"
+            class="dibu3"
+          >
+	
+            <text class="dibu" :class="{ dibu1: cart.id == cat_id }">{{
+              cart.name
+            }}</text>
+            <div :class="{ dibu2: cart.id == cat_id }"></div>
+          </div>
+		 <!-- <u-tabs
+		  :scrollable="true"
+		    :list="cartList"
+		    :current="current1"
+		    keyName="name"
+		    lineColor="#ff4544"
+		  ></u-tabs> -->
+        </div>
+		</scroll-view>
+      </div>
+    </div>
+
+    <!-- 评论弹框 -->
+    <CommentPopup
+      :showComment.sync="showComment"
+      :cItem="vgoodsList[index]"
+    ></CommentPopup>
+
+    <!-- 打赏弹框 -->
+    <GivePopup
+      :show.sync="showDaShang"
+      :vgoods_id="vgoodsList[swiperIndex] && vgoodsList[swiperIndex].id"
+      :close.sync="showDaShang"
+    >
+    </GivePopup>
+
+    <div class="share-popup" v-if="showShare">
+      <div class="title">
+        <text>分享</text>
+        <image
+          @click="switchBoolean('showShare')"
+          class="icon-arrow-close"
+          :src="wxapp_img.vgoods.icon_arrow_close"
+          mode="widthFix"
+        >
+        </image>
+      </div>
+
+      <div class="share-content flex-y-center flex-x-sa">
+        <view @click="onShare" class="flex-col flex-y-center">
+          <image
+            class="icon-img"
+            style="background-color: #07c160"
+            :src="wxapp_img.vgoods.wechat"
+            mode="aspectFill"
+          >
+          </image>
+          <text class="font-28 color-666 m-t-10">微信</text>
+        </view>
+        <view @click="getHaibao" class="flex-col flex-y-center">
+          <image
+            class="icon-img"
+            style="background-color: #ffb11c"
+            :src="wxapp_img.vgoods.QRcode"
+            mode="aspectFill"
+          >
+          </image>
+          <text class="font-28 color-666 m-t-10">海报</text>
+        </view>
+      </div>
+
+      <div v-if="showHaibao" class="img-box bdrd-20 bg-fff">
+        <view class="flex-col flex-y-center">
+          <image class="haibao-img" :src="shareImg" mode="widthFix"></image>
+          <view class="down-bt">
+            <text class="font-28 color-fff">保存图片</text>
+          </view>
+        </view>
+
+        <image
+          @click="switchBoolean('showHaibao')"
+          class="icon-arrow-close"
+          :src="wxapp_img.vgoods.icon_arrow_close"
+          mode="widthFix"
+        >
+        </image>
+      </div>
+    </div>
+  </list>
+</template>
+
+<script>
+const deviceInfo = uni.getSystemInfoSync();
+
+if (deviceInfo.brand == "Xiaomi") {
+  deviceInfo.windowHeight += 1;
+}
+import siteinfo from "@/siteinfo.js";
+import GivePopup from "../components/give-popup.nvue";
+import CommentPopup from "../components/comment-popup.nvue";
+// import GoodsPopup from '../components/goods-popup.nvue'
+var that;
+export default {
+  components: {
+    GivePopup,
+    CommentPopup,
+    // GoodsPopup
+  },
+  computed: {
+    $utils() {
+      return require("@/utils/utils").default;
+    },
+    $requestAll() {
+      return require("@/api/index.js").default;
+    },
+    wxapp_img() {
+      var store = require("@/store/index").default;
+      console.log(store.getters["wxapp_img"]);
+      return store.getters["wxapp_img"];
+    },
+    $store() {
+      var store = require("@/store/index").default;
+      return store;
+    },
+  },
+  data() {
+    return {
+      pageType: 0,
+      vgoodsList: [],
+      cartList: [],
+      id: "",
+      cat_id: 0,
+      page: 1,
+      status: "loadmore",
+
+      showDaShang: false,
+      showGoods: false,
+
+      // 分享参数开始----------------
+      store_id: "",
+      user_id: "",
+      _platform: "",
+      showShare: false,
+      shareImg: "",
+      showHaibao: false,
+      // 分享参数结束-----------------
+
+      statusBarHeight: deviceInfo.statusBarHeight + "px",
+      loadMoreHeight: deviceInfo.windowHeight * 2, // 触发 loadmore 事件所需要的垂直偏移距离 加载到剩余2	 继续加载
+      videoStyle: {
+        width: "750rpx",
+        height: deviceInfo.windowHeight + "px",
+      },
+      so: {
+        jingdu: "",
+        weidu: "",
+        ye: 1,
+        jitiao: 5,
+        zhuangtai: 1,
+        id: "",
+      },
+      // shuju: canshu,
+      index: 0,
+      bofangjindu: 0,
+      appear: "",
+      kebofang: 1,
+      suo: 0,
+    };
+  },
+
+  onLoad(params) {
+    // 设置store_id
+    if (params.store_id) {
+      this.$store.commit("setCurrentStore", {
+        id: params.store_id,
+      });
+    }
+    // 绑定上下级
+    if (params.user_id) {
+      this.parent_id = params.user_id;
+      this.$store.getters["user/userInfo"] &&
+        this.$requestAll.share.bindParent({
+          parent_id: params.user_id,
+        });
+    }
+    // 设置终端类型
+    if (params._platform) {
+      this._platform = params._platform;
+    }
+    // 分享数据结束·················
+
+    console.log("传参数据", params);
+    this.id = params.id;
+    this.pageType = parseInt(params.pageType) || 0;
+    console.log(this.pageType);
+    this.getVgoods();
+    this.getCat();
+  },
+  onShow() {
+    that = this;
+    this.kebofang = 1;
+    that.getVgoods();
+    if (this.vgoodsList[this.index]) {
+      uni.createVideoContext(`video_${this.index}`, this).play();
+      this.$set(this.vgoodsList[this.index], "fengmian", false);
+    }
+  },
+  onHide() {
+    that = this;
+    that.kebofang = 0;
+    if (this.vgoodsList[this.index]) {
+      uni.createVideoContext(`video_${this.index}`, this).pause();
+    }
+  },
+  methods: {
+    async getHaibao() {
+      const res = await this.$requestAll.default.shareQrcode(
+        {
+          id: this.vgoodsList[this.index].id,
+          type: 10,
+        },
+        true
+      );
+      this.shareImg = res.data.pic_url;
+      // this.shareImg =
+      // 	'https://tianxin100we10.cyyvip.com/web/temp//web/temp/6b9c851ecbf1dfa9ed0a56cc0e70dc35.jpg'
+      this.showHaibao = true;
+    },
+    onShare() {
+      uni.share({
+        provider: "weixin",
+        scene: "WXSceneSession",
+        title: this.vgoodsList[this.index].content,
+        imageUrl: "",
+        type: 0,
+        href: `${siteinfo.siteroot}/vgoods/edit/index${uni.$u.queryParams({
+          id: this.vgoodsList[this.index].id,
+          user_id: this.$store.getters["user/userInfo"].id || "",
+          store_id:
+            (this.$store.getters["currentStore"] &&
+              this.$store.getters["currentStore"].id) ||
+            1,
+          // #ifdef APP-PLUS
+          _platform: "app",
+          // #endif
+        })}`,
+
+        success: (res) => {
+          console.log("成功", res);
+          this.$emit("update:showPopup", false);
+        },
+        fail: (error) => {
+          console.log("失败", error);
+          console.log(error);
+        },
+        complete: (res) => {
+          console.log("完成", res);
+        },
+      });
+    },
+    async switchBoolean(key) {
+      this[key] = !this[key];
+    },
+    onHoutui() {
+      this.$utils.backTo();
+    },
+    // 点赞
+    async onDianzan(item, i) {
+      const res = await this.$requestAll.vgoods.vgoodsGood(
+        {
+          id: item.id,
+          status: item.is_like ? 0 : 1,
+        },
+        true
+      );
+      item.good_num = Number(item.good_num);
+      item.good_num += item.is_like ? -1 : 1;
+      item.is_like = item.is_like ? 0 : 1;
+    },
+
+    // 点击关注
+    async onFocus(vgoods) {
+      const res = this.$requestAll.vgoods.focus({
+        id: vgoods.user_id,
+        type: vgoods.is_focus,
+      });
+      vgoods.is_focus = vgoods.is_focus == 1 ? 0 : 1;
+    },
+
+    panduanpofang() {
+      if (that.kebofang == 0) {
+        uni.createVideoContext(`video_${this.index}`, this).pause();
+      }
+    },
+    onappear(e) {
+      console.log(e.direction);
+      this.appear = e.direction;
+    },
+
+    // 计算播放进度
+    Timeupdate(e) {
+      // 如果未播放过 && 视频事件为真，设置显示封面图
+      if (e.detail.currentTime > 0 && !this.vgoodsList[this.index].fengmian) {
+        this.$set(this.vgoodsList[this.index], "fengmian", true);
+      }
+      this.bofangjindu = parseInt(
+        (e.detail.currentTime / e.detail.duration) * 100
+      );
+    },
+
+    // 滚动事件
+    Disappear(e, i) {
+      console.log("上个索引", i);
+      // 停止上个短视频
+      uni.createVideoContext(`video_${i}`, this).pause();
+      // 更改当前索引
+      this.index = e.direction == "up" ? i + 1 : i - 1;
+      uni.createVideoContext(`video_${this.index}`, this).play();
+
+      console.log("当前索引", this.index);
+
+      // this.a = 0;
+      // if (that.suo == 1) {
+      // 	return false;
+      // }
+      // if (this.appear == e.direction && deviceInfo.platform == 'android') {
+      // 	this.$set(this.vgoodsList[this.index], 'fengmian', false)
+      // 	this.index = (e.direction == 'up') ? i + 1 : i - 1;
+      // 	setTimeout(() => {
+      // 		uni.createVideoContext(`video_${this.index}`, this).play()
+      // 	}, 100)
+      // }
+    },
+    Scroll(e) {
+      this.$set(this.vgoodsList[this.index], "fengmian", false);
+
+      // this.a = 0;
+      // if (deviceInfo.platform == 'ios') {
+      // 	var i = Math.abs(e.contentOffset.y / deviceInfo.windowHeight)
+      // 	if (i != this.index) {
+      // 		this.$set(this.vgoodsList[this.index], 'fengmian', false)
+      // 		this.index = i
+      // 		setTimeout(() => {
+      // 			uni.createVideoContext(`video_${this.index}`, this).play()
+      // 		}, 300)
+      // 	}
+      // }
+    },
+
+    // 获取视频列表
+    getVgoods: async function () {
+      if (this.status == "nomore") return;
+      var res = await this.$requestAll.vgoods.vgoodsEdit({
+        page: this.page,
+        cat_id: this.cat_id,
+        id: this.id,
+      });
+      this.vgoodsList.push(...res.data.vgoods);
+      console.log(this.vgoodsList[0], "获取的数据");
+      this.page++;
+      this.status = res.data.vgoods.length < 10 ? "nomore" : "loadmore";
+    },
+    // 获取分类
+    async getCat() {
+      // if (this.pageType) return
+      const res = await this.$requestAll.vgoods.vgoodsgetCat({});
+      this.cartList = res.data.cart_list;
+	  console.log(1111111111,this.cartList)
+	  this.cartList.push({id:11,name:'测试2'},{id:13,name:'测试3'},{id:14,name:'测试4'},{id:15,name:'测试3'},{id:16,name:'测试3'})
+    },
+    // 重置数据
+    resetPageData() {
+      this.vgoodsList = [];
+      this.page = 1;
+      this.status = "loadmore";
+      this.index = 0;
+    },
+    // 切换分类
+    switchTab(id) {
+      this.cat_id = id;
+      this.resetPageData();
+      this.getVgoods();
+    },
+  },
+  onShareAppMessage() {
+    if (this.vgoodsList.length) {
+      return {
+        title: this.vgoodsList[this.index].content,
+        path: `/vgoods/edit/index${uni.$u.queryParams({
+          id: this.vgoodsList[this.index].id,
+          user_id: this.$store.getters["user/userInfo"].id || "",
+          store_id:
+            (this.$store.getters["currentStore"] &&
+              this.$store.getters["currentStore"].id) ||
+            1,
+          // #ifdef APP-PLUS
+          _platform: "app",
+          // #endif
+        })}`,
+      };
+    }
+    return {};
+  },
+};
+</script>
+
+<style lang="less" scoped>
+// 头部导航栏
+.zhi_index00 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0)
+  );
+	
+  .zhi_index01 {
+    padding: 30rpx 30rpx 0;
+    flex-direction: row;
+    align-items: center;
+	
+    .zhi_index11 {
+      transform: translateY(-6rpx);
+
+      .zhi_index12 {
+        width: 50upx;
+      }
+    }
+  }
+
+  .zhi_index02 {
+    margin-left: 30rpx;
+    flex-direction: row;
+    align-items: center;
+    .dibu3 {
+      position: relative;
+      height: 30px;
+      margin: 0 30rpx;
+    }
+
+    .dibu1 {
+      font-weight: bold;
+      font-size: 38upx;
+      color: #ffffff !important;
+    }
+
+    .dibu2 {
+      position: absolute;
+      width: 30px;
+      height: 2px;
+      background-color: #ffffff;
+      bottom: 0;
+      left: 2px;
+      border-radius: 4upx;
+    }
+
+    .dibu {
+      color: #dcdcdc;
+      font-size: 32upx;
+    }
+  }
+}
+
+.maxTxPusher {
+  width: 750upx;
+  background-color: #111111;
+  position: fixed;
+}
+
+.zhi_xiashipin10 {
+  position: absolute;
+  right: 15upx;
+  bottom: 60px;
+  width: 100upx;
+  z-index: 99;
+  align-items: center;
+  justify-content: center;
+}
+
+.neirong {
+  position: absolute;
+  top: 0;
+}
+
+.zhi_xiashipin7 {
+  width: 480upx;
+  color: #fefefe;
+  line-height: 40upx;
+}
+
+.zhi_xiashipin5 {
+  padding-right: 15upx;
+  flex-direction: row;
+  align-items: center;
+  color: #46639b;
+  padding-bottom: 15upx;
+}
+
+.zhi_xiashipin6 {
+  width: 36upx;
+  height: 34upx;
+}
+
+.zhi_index04 {
+  width: 750upx;
+  flex: 1;
+  background-color: #000000;
+}
+
+.zhi_index05 {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.swiper-item-bottom-content {
+  position: absolute;
+  bottom: 30upx;
+  bottom: 150upx;
+  left: 20upx;
+  width: 560upx;
+  line-height: 40upx;
+}
+
+
+
+.zhi_index07 {
+  color: #f5f5f5;
+  font-size: 30upx;
+}
+
+.zhi_index08 {
+  font-size: 28upx;
+  color: #f5f5f5;
+}
+
+.zhi_index09 {
+  line-height: 50upx;
+  color: #ff0000;
+  font-size: 28upx;
+  font-weight: bold;
+}
+
+.zhi_index10 {
+  line-height: 50upx;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.zhi_index13 {
+  position: relative;
+  width: 90upx;
+  height: 140upx;
+}
+
+.zhi_index14 {
+  width: 90upx;
+  height: 90upx;
+  border-radius: 45upx;
+  margin-top: 8px;
+}
+
+.zhi_index15 {
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  width: 68upx;
+  height: 36upx;
+  align-items: center;
+  justify-content: center;
+  background-color: #ff0000;
+  border-radius: 30upx;
+}
+
+.zhi_index16 {
+  position: absolute;
+  color: #ff0000;
+  left: 25upx;
+  bottom: 10upx;
+  width: 20px;
+  height: 20px;
+}
+
+.zhi_index17 {
+  color: #ffffff;
+  font-size: 22upx;
+}
+
+.zhi_index18 {
+  padding-top: 10rpx;
+  width: 70upx;
+  height: 140upx;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.zhi_index19 {
+  width: 56upx;
+  height: 56upx;
+}
+
+.zhi_index20 {
+  width: 70upx;
+  height: 180upx;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.zhi_index18_1 {
+  padding-top: 0;
+  height: 130upx;
+}
+
+.zhi_index21 {
+  color: #ffffff;
+  font-size: 16px;
+  padding-top: 4px;
+}
+
+.zhi_index23 {
+  padding-bottom: 46upx;
+  width: 80rpx;
+  height: 80rpx;
+
+  .zhi_index22 {
+    width: 80upx;
+    height: 80upx;
+  }
+}
+
+.zhi_index24 {
+  position: absolute;
+  bottom: 10px;
+  left: 0px;
+  width: 750upx;
+}
+
+.flex {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-y-center {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+// .flex-w-1 {
+// 	flex: 1;
+// 	width: 0;
+// }
+// .color-666 {
+// 	color: #666;
+
+// }
+
+.popup-box {
+  position: fixed;
+  left: 0%;
+  right: 0;
+  bottom: 0;
+  border-radius: 20rpx 20rpx 0 0;
+  background: #fff;
+  padding-bottom: 0%;
+  padding-bottom: env(sare-area-inset-bottom);
+
+  .title {
+    position: relative;
+    font-weight: 600;
+    font-size: 32rpx;
+    padding: 20rpx 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-arrow-close {
+    position: absolute;
+    right: 40rpx;
+    top: 20rpx;
+    width: 50rpx;
+  }
+
+  .scroll {
+    height: 800rpx;
+
+    .list {
+      .item {
+        padding: 10rpx 20rpx;
+
+        .left {
+          .touxiang-img {
+            width: 70rpx;
+            height: 70rpx;
+            border-radius: 50%;
+            margin-right: 20rpx;
+          }
+
+          .left-content {
+            .nickname {
+              font-size: 28rpx;
+            }
+
+            .comment {
+              width: 100%;
+              word-break: break-all;
+              font-size: 28rpx;
+            }
+          }
+        }
+
+        .right {
+          display: flex;
+          flex-direction: column;
+
+          height: 140rpx;
+
+          .comment-xin {
+            width: 40rpx;
+          }
+        }
+      }
+    }
+  }
+
+  .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 40rpx auto;
+
+    .empty-img {
+      width: 400rpx;
+    }
+  }
+
+  .input-box {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    border-radius: 30rpx;
+    padding: 10rpx 20rpx;
+    margin: 20rpx;
+    background: #f5f5f5;
+
+    .input {
+      flex: 1;
+    }
+
+    .suffix {
+      padding: 0 10rpx;
+      font-weight: 600;
+      font-size: 30rpx;
+    }
+  }
+
+  .list {
+    .item {
+      padding: 10rpx 20rpx;
+
+      .left {
+        > image {
+          width: 70rpx;
+          height: 70rpx;
+          border-radius: 50%;
+          margin-right: 20rpx;
+        }
+
+        .left-content {
+          .comment {
+            width: 100%;
+            word-break: break-all;
+          }
+        }
+      }
+
+      .right {
+        height: 140rpx;
+      }
+    }
+  }
+}
+
+.share-popup {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 20rpx;
+  padding-bottom: 0;
+  padding-bottom: env(sare-area-inset-bottom);
+
+  .title {
+    position: relative;
+    font-weight: 600;
+    font-size: 32rpx;
+    padding: 20rpx 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-arrow-close {
+    position: absolute;
+    right: 40rpx;
+    top: 20rpx;
+    width: 50rpx;
+  }
+
+  .share-content {
+    padding: 40rpx 0;
+
+    .icon-img {
+      padding: 20rpx;
+      width: 100rpx;
+      height: 100rpx;
+      border-radius: 50%;
+    }
+
+    .flex-col {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .img-box {
+    position: fixed;
+    left: 100rpx;
+    bottom: 400rpx;
+    // transform: translate(-50%, -50%);
+
+    .flex-col {
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 20rpx;
+    }
+
+    .haibao-img {
+      width: 550rpx;
+      max-height: 800rpx;
+    }
+
+    .down-bt {
+      padding-bottom: 20rpx;
+      width: 200rpx;
+      height: 60rpx;
+
+      border-radius: 20rpx;
+      background: #fd2c3b;
+
+      .color-fff {
+        line-height: 60rpx;
+        text-align: center;
+      }
+    }
+  }
+}
+</style>

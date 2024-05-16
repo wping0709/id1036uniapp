@@ -1,0 +1,11 @@
+{
+    "id": "1",
+    "name": "wangjunwei",
+    "version": "1.0.0",
+    "description": "",
+    "keywords": [],
+    "dependencies": {
+        "crypto-js": "^4.1.1",
+        "vconsole": "^3.14.6"
+    }
+}

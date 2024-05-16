@@ -1,0 +1,149 @@
+<template>
+  <view class="goods-popup" v-if="show">
+    <div class="title">
+      <text class="title-text">共{{ goodsList.length || 0 }}件商品</text>
+      <image
+        @click="$emit('update:show', false)"
+        class="icon-arrow-close"
+        :src="wxapp_img.vgoods.icon_arrow_close"
+        mode="widthFix"
+      >
+      </image>
+    </div>
+
+    <scroll-view scroll-y class="scroll-view p-b-20">
+      <div class="goods-list">
+        <div class="goods-item" v-for="(goods, i) in goodsList" :key="i">
+          <image :src="goods.cover_pic" class="goods-img" mode="aspectFill" />
+
+          <div class="goods-content">
+            <text class="goods-name u-line-2">{{ goods.name }}</text>
+            <div class="goods-price-bt">
+              <text class="price">￥{{ goods.price }}</text>
+              <text
+                @click="$utils.toUrl('/pages/goods/goods?id=' + goods.id)"
+                class="goods-attr-bt"
+                >去购买</text
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </scroll-view>
+  </view>
+</template>
+
+<script>
+import $utils from '@/utils/utils.js';
+export default {
+  components: {},
+  props: {
+    show: {
+      type: Boolean,
+      default: false,
+    },
+    goodsList: {
+      type: [Array, String],
+      default: () => {
+        return {};
+      },
+    },
+  },
+  data() {
+    return {
+      checkGoods: '',
+    };
+  },
+  computed: {
+    $utils() {
+      return $utils;
+    },
+    wxapp_img() {
+      var store = require('@/store/index.js');
+      return store.getters['wxapp_img'];
+    },
+  },
+  methods: {},
+};
+</script>
+
+<style lang="scss" scoped>
+.goods-popup {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20rpx 20rpx 0 0;
+  background: #fff;
+  .title {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 0 30rpx;
+    height: 80rpx;
+
+    .title-text {
+      font-size: 32rpx;
+      font-weight: 600;
+    }
+
+    .icon-arrow-close {
+      width: 50rpx;
+    }
+  }
+
+  .scroll-view {
+    height: 750rpx;
+    .goods-list {
+      padding: 0 30rpx;
+      .goods-item {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        margin-bottom: 20rpx;
+
+        .goods-img {
+          width: 160rpx;
+          height: 160rpx;
+          border-radius: 20rpx;
+          margin-right: 20rpx;
+        }
+
+        .goods-content {
+          flex: 1;
+          width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          .goods-name {
+            font-size: 28rpx;
+            color: #333;
+          }
+
+          .goods-price-bt {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            .price {
+              font-size: 30rpx;
+              color: red;
+            }
+
+            .goods-attr-bt {
+              font-size: 28rpx;
+              color: #fff;
+              background: red;
+              border-radius: 10rpx;
+              padding: 10rpx 20rpx;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</style>

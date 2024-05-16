@@ -1,0 +1,74 @@
+<template>
+  <view v-if="pageData" class="body">
+    <template v-if="pageData.list.length">
+      <view
+        @click="
+          $utils.toUrl('/mch/verify-detail/verify-detail?sale_id=' + item.id)
+        "
+        class="card-item"
+        v-for="item in pageData.list"
+        :key="item.id"
+      >
+        <image :src="item.pic_url" mode="aspectFill" />
+        <view class="flex-w-1">
+          <view class="font-36 font-w-600">{{ item.verify_card_name }}</view>
+          <view class="m-t-10"> 剩余次数: {{ item.left_num }}次 </view>
+          <view class="m-t-10">有效期至: {{ item.valid_time }}</view>
+        </view>
+      </view>
+    </template>
+    <template v-else>
+      <u-empty mode="data" :icon="wxapp_img.empty_data">
+      </u-empty>
+    </template>
+  </view>
+</template>
+<script>
+export default {
+  data() {
+    return {
+      pageData: "",
+    };
+  },
+  onLoad() {
+    this.loadData();
+  },
+  methods: {
+    async loadData() {
+      const res = await this.$requestAll.verify.verifyIndex(
+        { status: 1 },
+        true
+      );
+      this.pageData = res.data;
+      
+    },
+  },
+  onShow() {},
+  computed: {},
+  watch: {},
+  onReachBottom() {},
+};
+</script>
+<style lang="scss" scoped>
+.body {
+  padding-top: 20rpx;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+.card-item {
+  > image {
+    width: 100rpx;
+    height: 100rpx;
+    border-radius: 50%;
+    margin-right: 20rpx;
+  }
+  padding: 20rpx;
+  margin: 0 20rpx 20rpx;
+  background: #fff;
+  border-radius: 10rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  opacity: .5;
+}
+</style>

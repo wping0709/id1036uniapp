@@ -1,0 +1,200 @@
+<template>
+	<div v-if="show" class="dashang-body">
+		<div class="dashang-popup bg-fff" v-if="!isinput">
+			<view class="title">
+				<text class="font-600-32 font-center">作者加油</text>
+				<image @click="$emit('update:show',false)" class="icon-arrow-close"
+					:src="wxapp_img.vgoods.icon_arrow_close" mode="widthFix">
+				</image>
+			</view>
+
+			<div class="price-list flex flex-wrap">
+				<text @click="onConfirm(item.gift_price)" class="price-item font-28" v-for="(item, i) in dashangList"
+					:key="i">
+					￥{{ item.gift_price }}
+				</text>
+				<text @click="isinput = true" class="price-item font-28">
+					其他金额
+				</text>
+			</div>
+		</div>
+		<div class="dashang-popup bg-fff" v-else>
+			<view class="title">
+				<text class="font-600-32 font-center">请输入打赏金额</text>
+				<image @click="$emit('update:show',false)" class="icon-arrow-close"
+					:src="wxapp_img.vgoods.icon_arrow_close" mode="widthFix">
+				</image>
+			</view>
+
+
+			<view class="p-y-20">
+				<u-input @confirm="onConfirm" :placeholder="`打赏金额范围￥0.01 - ￥${max_gift_price}`"
+					v-model.number="priceValue" border="none"></u-input>
+			</view>
+
+			<div class="btns m-t-10">
+				<text @click="isinput = false" class="cancel">取消</text>
+				<text @click="onConfirm(priceValue)" class="confirm" style="color:#007acc;">确定</text>
+			</div>
+		</div>
+
+	</div>
+</template>
+
+<script>
+	import $requestAll from '@/api/index.js'
+	import $utils from '@/utils/utils.js'
+	export default {
+		props: {
+			show: {
+				type: Boolean,
+				default: false,
+			},
+		},
+		data() {
+			return {
+				priceValue: '',
+				dashangList: '',
+				showPopup: false,
+				isinput: false,
+
+			};
+		},
+		computed: {
+			$requestAll() {
+				return $requestAll
+			},
+			$utils() {
+				return $utils
+			},
+			wxapp_img() {
+				return this.$store.getters['wxapp_img']
+			}
+		},
+		watch: {
+			show(v) {
+				console.log('123456')
+				if (v && !this.dashangList) {
+					this.getDashangList().then(() => {
+						this.showPopup = v;
+					});
+				} else {
+					this.showPopup = v;
+				}
+			},
+		},
+		created() {},
+		methods: {
+			async getDashangList() {
+				const res = await this.$requestAll.vgoods.giftSetting({}, true);
+				this.max_gift_price = Number(res.data.max_gift_price);
+				this.dashangList = res.data.list;
+			},
+			async onConfirm(e) {
+				console.log(e)
+				if (e < 0.01 || e > this.max_gift_price)
+					return uni.$u.toast(`打赏金额范围￥0.01 - ￥${this.max_gift_price}`);
+				const res = await this.$requestAll.vgoods.giveGift({
+					gift_price: e,
+					vgoods_id: 70,
+				});
+				this.priceValue = '';
+				console.log(this.$utils);
+				this.$utils.toUrl(
+					'/pages/pay/pay' +
+					uni.$u.queryParams({
+						order_id: res.data.order_id,
+						order_type: '20'
+					})
+				);
+			},
+		},
+		options: {
+			styleIsolation: 'shared'
+		}
+	};
+</script>
+
+<style lang="less">
+	.dashang-body {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		top: 0;
+	}
+
+	.title {
+		position: relative;
+		font-weight: 600;
+		font-size: 32rpx;
+		padding: 20rpx 0;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+
+
+		.icon-arrow-close {
+			position: absolute;
+			right: 20rpx;
+			top: 10rpx;
+			width: 50rpx;
+		}
+	}
+
+	.dashang-popup {
+		border-radius: 20rpx;
+		padding: 20rpx;
+		width: 610rpx;
+		background: #fff;
+
+		.price-list {
+			
+
+
+
+
+
+			.price-item {
+				margin-right: 10rpx;
+				margin-top: 10rpx;
+				width: 180rpx;
+				height: 80rpx;
+				line-height: 80rpx;
+				text-align: center;
+				border-radius: 10rpx;
+				border: 1px solid #fc4c1e;
+				color: #fc4c1e;
+
+				&:nth-child(3n) {
+					margin-right: 0;
+				}
+			}
+		}
+	}
+
+	.btns {
+		border-top: 1px solid #f5f5f5;
+
+
+		display: flex;
+		flex-flow: row;
+
+		.cancel,
+		.confirm {
+			flex: 1;
+			line-height: 80rpx;
+			height: 80rpx;
+			text-align: center;
+		}
+
+		.cancel {
+			border-right: 1px solid #f5f5f5;
+		}
+	}
+</style>
